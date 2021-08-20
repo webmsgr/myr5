@@ -69,16 +69,18 @@ def updatedetors(force=False):
 
 def updatescripts(force=False):
     t = Terminal()
+    wlc = False # write latest commit
     if not force and not os.path.exists("myr5_data/scripts_version"):
         a = input(
-            f"Unable to automatic merge, updating will result in erasure of changes to script files.\nProceed (Y/N)?")
-    else:
-        a = "y"
-    if a.upper() != "Y":
-        print(t.red + "Stopping!")
-        print(t.normal)
-        time.sleep(1)
-        return False
+            f"Unable to automatic merge, please choose an option.\n1: Force Update ({t.red}{t.bold}All changes will be lost!{t.normal})\n2. Fix (If you are on the latest version already)\n3. Abort\n>")
+        if a == "1":
+            force = True
+        elif a == "2":
+            wlc = True
+        else:
+            print(t.red+"Aborting!"+t.normal)
+            time.sleep(1)
+            return False
     print(t.green+"Updating Scripts...")
     print("Finding latest commit... ", end=t.normal)
     r = requests.get(
@@ -92,6 +94,9 @@ def updatescripts(force=False):
     data = r.json()
     latestcommit = data[0]["sha"]
     print(latestcommit)
+    if wlc:
+        with open("myr5_data/scripts_version", "w") as fl:  # Create version file
+            fl.write(latestcommit)
     if not force and os.path.exists("myr5_data/scripts_version") and latestcommit == open("myr5_data/scripts_version").read():
         print(t.green+"Scripts already up to date!")
         print(t.normal)
@@ -169,7 +174,15 @@ def updatescripts(force=False):
     time.sleep(1)
     return True
 
-
+def forceask(d):
+    a = input(
+            f"Are you sure you want to force update? All changes will be lost! (y/n)")
+    if a.upper() != "Y":
+        print(t.red + "Stopping!")
+        print(t.normal)
+        time.sleep(1)
+        return False
+    return d(True)
 def launchr5(debug=False):
     print("Launching R5 ({})".format("Dev" if debug else "Retail"))
     args = ["Run R5 Reloaded.exe", "-debug" if debug else "-release"]
@@ -195,6 +208,8 @@ def main():
     updatemenu = ConsoleMenu("Update")
     updatemenu.append_item(FunctionItem("Update Detors", updatedetors))
     updatemenu.append_item(FunctionItem("Update Scripts", updatescripts))
+    updatemenu.append_item(FunctionItem("Force Update Detors", forceask,[updatedetors]))
+    updatemenu.append_item(FunctionItem("Force Update Scripts", forceask,[updatescripts]))
     menu.append_item(FunctionItem("Launch", launchr5, [False]))
     menu.append_item(FunctionItem("Launch Dev", launchr5, [True]))
     menu.append_item(SubmenuItem("Update", updatemenu))
