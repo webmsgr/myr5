@@ -8,6 +8,18 @@ import time
 import zipfile
 import shutil
 import subprocess
+import hashlib
+
+def gethash(filename):
+    with open(filename,"rb") as f:
+        data = f.read()
+    return hashlib.md5(data).hexdigest()
+
+def gethashurl(url):
+    r = requests.get(url)
+    r.raise_for_status()
+    data = r.content
+    return hashlib.md5(data).hexdigest()
 
 def updatedetors(force=False):
     t = Terminal()
@@ -51,8 +63,8 @@ def updatedetors(force=False):
     return True
 def updatescripts(force=False):
     t = Terminal()
-    if not force:
-        a = input(f"Update scripts? \n{t.red}This will erase all changes!\n(but will not erase created files)\n{t.normal}(Y/N)")
+    if not force and not os.path.exists("myr5_data/scripts_version"):
+        a = input(f"Unable to automatic merge, updating will result in erasure of changes to script files.\nProceed (Y/N)?")
     else:
         a = "y"
     if a.upper() != "Y":
@@ -77,23 +89,68 @@ def updatescripts(force=False):
         print(t.normal)
         time.sleep(1)
         return True
-    print(t.green+"Downloading latest release...")
-    dturl = "https://github.com/Mauler125/scripts_r5/archive/{}.zip".format(latestcommit)
-    with open("myr5_data/tmp/scripts.zip","wb") as f:
-        r = requests.get(dturl)
-        f.write(r.content)
-    print("Extracting content...")
-    with zipfile.ZipFile("myr5_data/tmp/scripts.zip","r") as z:
-        z.extractall("myr5_data/tmp")
-    dfolder = os.path.abspath(os.path.join("myr5_data/tmp","scripts_r5-"+latestcommit))
-    shutil.copytree(dfolder,"platform/scripts",dirs_exist_ok=True)
-    print("Cleaning up...")
-    shutil.rmtree("myr5_data/tmp",ignore_errors=True)
-    os.mkdir("myr5_data/tmp")
+    if force or not os.path.exists("myr5_data/scripts_version"):
+        print(t.green+"Downloading latest release...")
+        dturl = "https://github.com/Mauler125/scripts_r5/archive/{}.zip".format(latestcommit)
+        with open("myr5_data/tmp/scripts.zip","wb") as f:
+            r = requests.get(dturl)
+            f.write(r.content)
+        print("Extracting content...")
+        with zipfile.ZipFile("myr5_data/tmp/scripts.zip","r") as z:
+            z.extractall("myr5_data/tmp")
+        dfolder = os.path.abspath(os.path.join("myr5_data/tmp","scripts_r5-"+latestcommit))
+        shutil.copytree(dfolder,"platform/scripts",dirs_exist_ok=True)
+        print("Cleaning up...")
+        shutil.rmtree("myr5_data/tmp",ignore_errors=True)
+        os.mkdir("myr5_data/tmp")
+    else:
+        currentcommit = open("myr5_data/scripts_version").read()
+        print(t.green+"Merging...")
+        compareurl = "https://api.github.com/repos/Mauler125/scripts_r5/compare/{}...HEAD".format(currentcommit)
+        r = requests.get(compareurl)
+        if r.status_code != 200:
+            print(t.red+"Error!")
+            print("Error getting compare info: {}".format(r.status_code))
+            print(t.normal)
+            time.sleep(1)
+            return False
+        data = r.json()
+        if data["status"] == "identical":
+            print(t.green+"Scripts already up to date!")
+            print(t.normal)
+            time.sleep(1)
+            return True
+        print("Commits behind: {}".format(data["ahead_by"]))
+        print("Changed files:"+t.normal)
+        try:
+            for file in data["files"]:
+                print(file["filename"], end=" ",flush=True)
+                oldurl = "https://github.com/Mauler125/scripts_r5/raw/{}/{}".format(currentcommit,file["filename"])
+                newurl = file["raw_url"]
+                fl = os.path.join("platform","scripts",file["filename"])
+                hsh = gethashurl(oldurl)
+                if gethash(fl) != hsh:
+                    print(t.red("CHANGED! Overwrite? (y/n)"),end=" ",flush=True)
+                    with t.cbreak():
+                        val = t.inkey()
+                    if val != "y":
+                        print(t.move_x(0)+file["filename"]+" "+t.red("SKIPPED")+" "*20)
+                    else:
+                        newfile = requests.get(newurl)
+                        with open(fl,"wb") as f:
+                            f.write(newfile.content)
+                        print(t.move_x(0)+file["filename"]+" "+t.green("MERGED") + " "*20)
+                else:
+                    newfile = requests.get(newurl)
+                    with open(fl,"wb") as f:
+                        f.write(newfile.content)
+                    print(t.green("MERGED"))
+        except Exception as e:
+            print(e)
+        input()
     with open("myr5_data/scripts_version","w") as fl:
         fl.write(latestcommit)
-        
-    print("Scripts updated!")
+    print(t.green("Scripts updated!"))
     print(t.normal)
     time.sleep(1)
     return True
