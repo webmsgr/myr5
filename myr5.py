@@ -26,7 +26,7 @@ def gethashurl(url):
 
 def updatedetors(force=False):
     t = Terminal()
-    print(t.green+"Updating Detors...")
+    print(t.green+"Updating Detours...")
     print("Finding latest release... ", end="")
     r = requests.get(
         "https://api.github.com/repos/Mauler125/detours_r5/releases/latest")
@@ -39,7 +39,7 @@ def updatedetors(force=False):
     data = r.json()
     print(t.normal + data["tag_name"])
     if not force and os.path.exists("myr5_data/det_version") and data["tag_name"] == open("myr5_data/det_version").read():
-        print(t.green+"Detors already up to date!")
+        print(t.green+"Detours already up to date!")
         print(t.normal)
         time.sleep(1)
         return True
@@ -61,7 +61,7 @@ def updatedetors(force=False):
     with open("myr5_data/det_version", "w") as fl:
         fl.write(data["tag_name"])
 
-    print("Detors updated!")
+    print("Detours updated!")
     print(t.normal)
     time.sleep(1)
     return True
@@ -206,9 +206,9 @@ def main():
         updatescripts(True)
     menu = ConsoleMenu("R5Reloaded")
     updatemenu = ConsoleMenu("Update")
-    updatemenu.append_item(FunctionItem("Update Detors", updatedetors))
+    updatemenu.append_item(FunctionItem("Update Detours", updatedetors))
     updatemenu.append_item(FunctionItem("Update Scripts", updatescripts))
-    updatemenu.append_item(FunctionItem("Force Update Detors", forceask,[updatedetors]))
+    updatemenu.append_item(FunctionItem("Force Update Detours", forceask,[updatedetors]))
     updatemenu.append_item(FunctionItem("Force Update Scripts", forceask,[updatescripts]))
     menu.append_item(FunctionItem("Launch", launchr5, [False]))
     menu.append_item(FunctionItem("Launch Dev", launchr5, [True]))
