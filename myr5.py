@@ -145,8 +145,13 @@ def updatescripts(force=False):
                     currentcommit, file["filename"])
                 newurl = file["raw_url"]
                 fl = os.path.join("platform", "scripts", file["filename"])
-                hsh = gethashurl(oldurl)
-                if gethash(fl) != hsh:
+                if os.path.exists(fl):
+                    hsh = gethashurl(oldurl)
+                    oh = gethash(fl)
+                else:
+                    hsh = 0
+                    oh = 0
+                if oh != hsh:
                     print(t.red("CHANGED! Overwrite? (y/n)"),
                           end=" ", flush=True)
                     with t.cbreak():
